@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class ReConsLoss(nn.Module):
-    def __init__(self, recons_loss, nb_joints):
+    def __init__(self, recons_loss, nb_joints, dim_root):
         super(ReConsLoss, self).__init__()
         
         if recons_loss == 'l1': 
@@ -17,14 +17,14 @@ class ReConsLoss(nn.Module):
         # 3 global vel xyz
         # 4 foot contact
         self.nb_joints = nb_joints
-        self.motion_dim = (nb_joints - 1) * 12 + 4 + 3 + 4
+        self.dim_root = dim_root
         
     def forward(self, motion_pred, motion_gt) : 
-        loss = self.Loss(motion_pred[..., : self.motion_dim], motion_gt[..., :self.motion_dim])
+        loss = self.Loss(motion_pred, motion_gt)
         return loss
     
     def forward_vel(self, motion_pred, motion_gt) : 
-        loss = self.Loss(motion_pred[..., 4 : (self.nb_joints - 1) * 3 + 4], motion_gt[..., 4 : (self.nb_joints - 1) * 3 + 4])
+        loss = self.Loss(motion_pred[..., self.dim_root : (self.nb_joints - 1) * 3 + self.dim_root], motion_gt[..., self.dim_root : (self.nb_joints - 1) * 3 + self.dim_root])
         return loss
     
     

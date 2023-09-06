@@ -71,6 +71,15 @@ def get_opt(opt_path, device):
         opt.max_motion_length = 196
         opt.max_motion_frame = 196
         opt.max_motion_token = 55
+    elif opt.dataset_name == 'ue':
+        opt.data_root = './dataset/HumanML3D_UE/'
+        opt.motion_dir = pjoin(opt.data_root, 'new_joint_vecs')
+        opt.text_dir = pjoin(opt.data_root, 'texts')
+        opt.joints_num = 25
+        opt.dim_pose = 305
+        opt.max_motion_length = 196
+        opt.max_motion_frame = 196
+        opt.max_motion_token = 55
     else:
         raise KeyError('Dataset not recognized')
 

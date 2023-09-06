@@ -7,18 +7,25 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import mpl_toolkits.mplot3d.axes3d as p3
 from textwrap import wrap
 import imageio
+from utils.paramUtil import t2m_kinematic_chain, kit_kinematic_chain, ue_kinematic_chain
 
 def plot_3d_motion(args, figsize=(10, 10), fps=120, radius=4):
     matplotlib.use('Agg')
     
     
-    joints, out_name, title = args
+    joints, out_name, title, dataname = args
     
     data = joints.copy().reshape(len(joints), -1, 3)
     
-    nb_joints = joints.shape[1]
-    smpl_kinetic_chain = [[0, 11, 12, 13, 14, 15], [0, 16, 17, 18, 19, 20], [0, 1, 2, 3, 4], [3, 5, 6, 7], [3, 8, 9, 10]] if nb_joints == 21 else [[0, 2, 5, 8, 11], [0, 1, 4, 7, 10], [0, 3, 6, 9, 12, 15], [9, 14, 17, 19, 21], [9, 13, 16, 18, 20]]
-    limits = 1000 if nb_joints == 21 else 2
+    if dataname == 't2m':
+        smpl_kinetic_chain = t2m_kinematic_chain
+        limits = 2
+    elif dataname == 'kit':
+        smpl_kinetic_chain = kit_kinematic_chain
+        limits = 1000
+    elif dataname == 'ue':
+        smpl_kinetic_chain = ue_kinematic_chain
+        limits = 2
     MINS = data.min(axis=0).min(axis=0)
     MAXS = data.max(axis=0).max(axis=0)
     colors = ['red', 'blue', 'black', 'red', 'blue',
@@ -52,7 +59,11 @@ def plot_3d_motion(args, figsize=(10, 10), fps=120, radius=4):
             xz_plane = Poly3DCollection([verts])
             xz_plane.set_facecolor((0.5, 0.5, 0.5, 0.5))
             ax.add_collection3d(xz_plane)
-        fig = plt.figure(figsize=(480/96., 320/96.), dpi=96) if nb_joints == 21 else plt.figure(figsize=(10, 10), dpi=96)
+        if dataname == 't2m' or dataname == 'ue':
+            fig = plt.figure(figsize=(10, 10), dpi=96)
+        elif dataname == 'kit':
+            fig = plt.figure(figsize=(480/96., 320/96.), dpi=96)
+
         if title is not None :
             wraped_title = '\n'.join(wrap(title, 40))
             fig.suptitle(wraped_title, fontsize=16)
@@ -112,12 +123,12 @@ def plot_3d_motion(args, figsize=(10, 10), fps=120, radius=4):
     return torch.from_numpy(out)
 
 
-def draw_to_batch(smpl_joints_batch, title_batch=None, outname=None) : 
+def draw_to_batch(smpl_joints_batch, title_batch=None, outname=None, dataname='t2m') : 
     
     batch_size = len(smpl_joints_batch)
     out = []
     for i in range(batch_size) : 
-        out.append(plot_3d_motion([smpl_joints_batch[i], None, title_batch[i] if title_batch is not None else None]))
+        out.append(plot_3d_motion([smpl_joints_batch[i], None, title_batch[i] if title_batch is not None else None, dataname]))
         if outname is not None:
             imageio.mimsave(outname[i], np.array(out[-1]), fps=20)
     out = torch.stack(out, axis=0)

@@ -30,6 +30,14 @@ class VQMotionDataset(data.Dataset):
 
             self.max_motion_length = 196
             self.meta_dir = 'checkpoints/kit/VQVAEV3_CB1024_CMT_H1024_NRES3/meta'
+
+        elif dataset_name == 'ue':
+            self.data_root = './dataset/HumanML3D_UE'
+            self.motion_dir = pjoin(self.data_root, 'new_joint_vecs')
+            self.text_dir = pjoin(self.data_root, 'texts')
+            self.joints_num = 25
+            self.max_motion_length = 196
+            self.meta_dir = 'checkpoints/ue/VQVAEV3_CB1024_CMT_H1024_NRES3/meta'
         
         joints_num = self.joints_num
 

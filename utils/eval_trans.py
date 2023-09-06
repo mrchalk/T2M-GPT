@@ -6,19 +6,19 @@ import torch
 from scipy import linalg
 
 import visualization.plot_3d_global as plot_3d
-from utils.motion_process import recover_from_ric
+from utils.motion_process import recover_from_ric, recover_from_ric_ue
 
 
-def tensorborad_add_video_xyz(writer, xyz, nb_iter, tag, nb_vis=4, title_batch=None, outname=None):
+def tensorborad_add_video_xyz(writer, xyz, nb_iter, tag, nb_vis=4, title_batch=None, outname=None, dataname='t2m'):
     xyz = xyz[:1]
     bs, seq = xyz.shape[:2]
     xyz = xyz.reshape(bs, seq, -1, 3)
-    plot_xyz = plot_3d.draw_to_batch(xyz.cpu().numpy(),title_batch, outname)
+    plot_xyz = plot_3d.draw_to_batch(xyz.cpu().numpy(),title_batch, outname, dataname)
     plot_xyz =np.transpose(plot_xyz, (0, 1, 4, 2, 3)) 
     writer.add_video(tag, plot_xyz, nb_iter, fps = 20)
 
 @torch.no_grad()        
-def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, eval_wrapper, draw = True, save = True, savegif=False, savenpy=False) : 
+def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, eval_wrapper, dataname='t2m', draw = True, save = True, savegif=False, savenpy=False) : 
     net.eval()
     nb_sample = 0
     
@@ -42,19 +42,23 @@ def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid
         motion = motion.cuda()
         et, em = eval_wrapper.get_co_embeddings(word_embeddings, pos_one_hots, sent_len, motion, m_length)
         bs, seq = motion.shape[0], motion.shape[1]
-
-        num_joints = 21 if motion.shape[-1] == 251 else 22
         
         pred_pose_eval = torch.zeros((bs, seq, motion.shape[-1])).cuda()
 
         for i in range(bs):
             pose = val_loader.dataset.inv_transform(motion[i:i+1, :m_length[i], :].detach().cpu().numpy())
-            pose_xyz = recover_from_ric(torch.from_numpy(pose).float().cuda(), num_joints)
+            if dataname == 'ue':
+                pose_xyz = recover_from_ric_ue(torch.from_numpy(pose).float().cuda(), 25)
+            else:
+                pose_xyz = recover_from_ric(torch.from_numpy(pose).float().cuda(), 21 if dataname == 'kit' else 22)
 
 
             pred_pose, loss_commit, perplexity = net(motion[i:i+1, :m_length[i]])
             pred_denorm = val_loader.dataset.inv_transform(pred_pose.detach().cpu().numpy())
-            pred_xyz = recover_from_ric(torch.from_numpy(pred_denorm).float().cuda(), num_joints)
+            if dataname == 'ue':
+                pred_xyz = recover_from_ric_ue(torch.from_numpy(pred_denorm).float().cuda(), 25)
+            else:
+                pred_xyz = recover_from_ric(torch.from_numpy(pred_denorm).float().cuda(), 21 if dataname == 'kit' else 22)
             
             if savenpy:
                 np.save(os.path.join(out_dir, name[i]+'_gt.npy'), pose_xyz[:, :m_length[i]].cpu().numpy())
@@ -111,11 +115,11 @@ def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid
     
         if nb_iter % 5000 == 0 : 
             for ii in range(4):
-                tensorborad_add_video_xyz(writer, draw_org[ii], nb_iter, tag='./Vis/org_eval'+str(ii), nb_vis=1, title_batch=[draw_text[ii]], outname=[os.path.join(out_dir, 'gt'+str(ii)+'.gif')] if savegif else None)
+                tensorborad_add_video_xyz(writer, draw_org[ii], nb_iter, tag='./Vis/org_eval'+str(ii), nb_vis=1, title_batch=[draw_text[ii]], outname=[os.path.join(out_dir, 'gt'+str(ii)+'.gif')] if savegif else None, dataname=dataname)
             
         if nb_iter % 5000 == 0 : 
             for ii in range(4):
-                tensorborad_add_video_xyz(writer, draw_pred[ii], nb_iter, tag='./Vis/pred_eval'+str(ii), nb_vis=1, title_batch=[draw_text[ii]], outname=[os.path.join(out_dir, 'pred'+str(ii)+'.gif')] if savegif else None)   
+                tensorborad_add_video_xyz(writer, draw_pred[ii], nb_iter, tag='./Vis/pred_eval'+str(ii), nb_vis=1, title_batch=[draw_text[ii]], outname=[os.path.join(out_dir, 'pred'+str(ii)+'.gif')] if savegif else None, dataname=dataname)
 
     
     if fid < best_fid : 
@@ -164,7 +168,7 @@ def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid
 
 
 @torch.no_grad()        
-def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, clip_model, eval_wrapper, draw = True, save = True, savegif=False) : 
+def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, clip_model, eval_wrapper, dataname='t2m', draw = True, save = True, savegif=False) : 
 
     trans.eval()
     nb_sample = 0
@@ -187,7 +191,6 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
             word_embeddings, pos_one_hots, clip_text, sent_len, pose, m_length, token, name = batch
 
             bs, seq = pose.shape[:2]
-            num_joints = 21 if pose.shape[-1] == 251 else 22
             
             text = clip.tokenize(clip_text, truncate=True).cuda()
 
@@ -209,7 +212,10 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
 
                 if draw:
                     pred_denorm = val_loader.dataset.inv_transform(pred_pose.detach().cpu().numpy())
-                    pred_xyz = recover_from_ric(torch.from_numpy(pred_denorm).float().cuda(), num_joints)
+                    if dataname == 'ue':
+                        pred_xyz = recover_from_ric_ue(torch.from_numpy(pred_denorm).float().cuda(), 25)
+                    else:
+                        pred_xyz = recover_from_ric(torch.from_numpy(pred_denorm).float().cuda(),  21 if dataname == 'kit' else 22)
 
                     if i == 0 and k < 4:
                         draw_pred.append(pred_xyz)
@@ -226,7 +232,10 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
 
                 if draw:
                     pose = val_loader.dataset.inv_transform(pose.detach().cpu().numpy())
-                    pose_xyz = recover_from_ric(torch.from_numpy(pose).float().cuda(), num_joints)
+                    if dataname == 'ue':
+                        pose_xyz = recover_from_ric_ue(torch.from_numpy(pose).float().cuda(), 25)
+                    else:
+                        pose_xyz = recover_from_ric(torch.from_numpy(pose).float().cuda(), 21 if dataname == 'kit' else 22)
 
 
                     for j in range(min(4, bs)):
@@ -274,11 +283,11 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
     
         if nb_iter % 10000 == 0 : 
             for ii in range(4):
-                tensorborad_add_video_xyz(writer, draw_org[ii], nb_iter, tag='./Vis/org_eval'+str(ii), nb_vis=1, title_batch=[draw_text[ii]], outname=[os.path.join(out_dir, 'gt'+str(ii)+'.gif')] if savegif else None)
+                tensorborad_add_video_xyz(writer, draw_org[ii], nb_iter, tag='./Vis/org_eval'+str(ii), nb_vis=1, title_batch=[draw_text[ii]], outname=[os.path.join(out_dir, 'gt'+str(ii)+'.gif')] if savegif else None, dataname=dataname)
             
         if nb_iter % 10000 == 0 : 
             for ii in range(4):
-                tensorborad_add_video_xyz(writer, draw_pred[ii], nb_iter, tag='./Vis/pred_eval'+str(ii), nb_vis=1, title_batch=[draw_text_pred[ii]], outname=[os.path.join(out_dir, 'pred'+str(ii)+'.gif')] if savegif else None)
+                tensorborad_add_video_xyz(writer, draw_pred[ii], nb_iter, tag='./Vis/pred_eval'+str(ii), nb_vis=1, title_batch=[draw_text_pred[ii]], outname=[os.path.join(out_dir, 'pred'+str(ii)+'.gif')] if savegif else None, dataname=dataname)
 
     
     if fid < best_fid : 
@@ -321,7 +330,7 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
 
 
 @torch.no_grad()        
-def evaluation_transformer_test(out_dir, val_loader, net, trans, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, best_multi, clip_model, eval_wrapper, draw = True, save = True, savegif=False, savenpy=False) : 
+def evaluation_transformer_test(out_dir, val_loader, net, trans, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, best_multi, clip_model, eval_wrapper, dataname='t2m', draw = True, save = True, savegif=False, savenpy=False) : 
 
     trans.eval()
     nb_sample = 0
@@ -346,7 +355,6 @@ def evaluation_transformer_test(out_dir, val_loader, net, trans, logger, writer,
 
         word_embeddings, pos_one_hots, clip_text, sent_len, pose, m_length, token, name = batch
         bs, seq = pose.shape[:2]
-        num_joints = 21 if pose.shape[-1] == 251 else 22
         
         text = clip.tokenize(clip_text, truncate=True).cuda()
 
@@ -370,7 +378,10 @@ def evaluation_transformer_test(out_dir, val_loader, net, trans, logger, writer,
 
                 if i == 0 and (draw or savenpy):
                     pred_denorm = val_loader.dataset.inv_transform(pred_pose.detach().cpu().numpy())
-                    pred_xyz = recover_from_ric(torch.from_numpy(pred_denorm).float().cuda(), num_joints)
+                    if dataname == 'ue':
+                        pred_xyz = recover_from_ric_ue(torch.from_numpy(pred_denorm).float().cuda(), 25)
+                    else:
+                        pred_xyz = recover_from_ric(torch.from_numpy(pred_denorm).float().cuda(), 21 if dataname=='kit' else 22)
 
                     if savenpy:
                         np.save(os.path.join(out_dir, name[k]+'_pred.npy'), pred_xyz.detach().cpu().numpy())
@@ -394,7 +405,10 @@ def evaluation_transformer_test(out_dir, val_loader, net, trans, logger, writer,
 
                 if draw or savenpy:
                     pose = val_loader.dataset.inv_transform(pose.detach().cpu().numpy())
-                    pose_xyz = recover_from_ric(torch.from_numpy(pose).float().cuda(), num_joints)
+                    if dataname == 'ue':
+                        pose_xyz = recover_from_ric_ue(torch.from_numpy(pose).float().cuda(), 25)
+                    else:
+                        pose_xyz = recover_from_ric(torch.from_numpy(pose).float().cuda(), 21 if dataname=='kit' else 22)
 
                     if savenpy:
                         for j in range(bs):
@@ -442,9 +456,9 @@ def evaluation_transformer_test(out_dir, val_loader, net, trans, logger, writer,
     
     if draw:
         for ii in range(len(draw_org)):
-            tensorborad_add_video_xyz(writer, draw_org[ii], nb_iter, tag='./Vis/'+draw_name[ii]+'_org', nb_vis=1, title_batch=[draw_text[ii]], outname=[os.path.join(out_dir, draw_name[ii]+'_skel_gt.gif')] if savegif else None)
+            tensorborad_add_video_xyz(writer, draw_org[ii], nb_iter, tag='./Vis/'+draw_name[ii]+'_org', nb_vis=1, title_batch=[draw_text[ii]], outname=[os.path.join(out_dir, draw_name[ii]+'_skel_gt.gif')] if savegif else None, dataname=dataname)
         
-            tensorborad_add_video_xyz(writer, draw_pred[ii], nb_iter, tag='./Vis/'+draw_name[ii]+'_pred', nb_vis=1, title_batch=[draw_text_pred[ii]], outname=[os.path.join(out_dir, draw_name[ii]+'_skel_pred.gif')] if savegif else None)
+            tensorborad_add_video_xyz(writer, draw_pred[ii], nb_iter, tag='./Vis/'+draw_name[ii]+'_pred', nb_vis=1, title_batch=[draw_text_pred[ii]], outname=[os.path.join(out_dir, draw_name[ii]+'_skel_pred.gif')] if savegif else None, dataname=dataname)
 
     trans.train()
     return fid, best_iter, diversity, R_precision[0], R_precision[1], R_precision[2], matching_score_pred, multimodality, writer, logger

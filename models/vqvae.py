@@ -21,8 +21,8 @@ class VQVAE_251(nn.Module):
         self.code_dim = code_dim
         self.num_code = nb_code
         self.quant = args.quantizer
-        self.encoder = Encoder(251 if args.dataname == 'kit' else 263, output_emb_width, down_t, stride_t, width, depth, dilation_growth_rate, activation=activation, norm=norm)
-        self.decoder = Decoder(251 if args.dataname == 'kit' else 263, output_emb_width, down_t, stride_t, width, depth, dilation_growth_rate, activation=activation, norm=norm)
+        self.encoder = Encoder(args.dim_pose, output_emb_width, down_t, stride_t, width, depth, dilation_growth_rate, activation=activation, norm=norm)
+        self.decoder = Decoder(args.dim_pose, output_emb_width, down_t, stride_t, width, depth, dilation_growth_rate, activation=activation, norm=norm)
         if args.quantizer == "ema_reset":
             self.quantizer = QuantizeEMAReset(nb_code, code_dim, args)
         elif args.quantizer == "orig":
@@ -98,7 +98,7 @@ class HumanVQVAE(nn.Module):
         
         super().__init__()
         
-        self.nb_joints = 21 if args.dataname == 'kit' else 22
+        self.nb_joints = args.nb_joints
         self.vqvae = VQVAE_251(args, nb_code, code_dim, output_emb_width, down_t, stride_t, width, depth, dilation_growth_rate, activation=activation, norm=norm)
 
     def encode(self, x):

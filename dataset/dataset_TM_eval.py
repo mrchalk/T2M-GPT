@@ -48,6 +48,17 @@ class Text2MotionDataset(data.Dataset):
             self.max_motion_length = 196
             kinematic_chain = paramUtil.kit_kinematic_chain
             self.meta_dir = 'checkpoints/kit/VQVAEV3_CB1024_CMT_H1024_NRES3/meta'
+        elif dataset_name == 'ue':
+            self.data_root = './dataset/HumanML3D_UE'
+            self.motion_dir = pjoin(self.data_root, 'new_joint_vecs')
+            self.text_dir = pjoin(self.data_root, 'texts')
+            self.joints_num = 25
+            radius = 4
+            fps = 20
+            self.max_motion_length = 196
+            dim_pose = 305
+            kinematic_chain = paramUtil.ue_kinematic_chain
+            self.meta_dir = 'checkpoints/ue/VQVAEV3_CB1024_CMT_H1024_NRES3/meta'
 
         mean = np.load(pjoin(self.meta_dir, 'mean.npy'))
         std = np.load(pjoin(self.meta_dir, 'std.npy'))
@@ -57,7 +68,7 @@ class Text2MotionDataset(data.Dataset):
         else:
             split_file = pjoin(self.data_root, 'val.txt')
 
-        min_motion_len = 40 if self.dataset_name =='t2m' else 24
+        min_motion_len = 40 if self.dataset_name =='t2m' or self.dataset_name =='ue' else 24
         # min_motion_len = 64
 
         joints_num = self.joints_num

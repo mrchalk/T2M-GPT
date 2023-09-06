@@ -44,10 +44,20 @@ w_vectorizer = WordVectorizer('./glove', 'our_vab')
 if args.dataname == 'kit' : 
     dataset_opt_path = 'checkpoints/kit/Comp_v6_KLD005/opt.txt'  
     args.nb_joints = 21
-    
-else :
+    args.dim_pose = 251
+    args.dim_root = 4
+
+elif args.dataname == 't2m' : 
     dataset_opt_path = 'checkpoints/t2m/Comp_v6_KLD005/opt.txt'
     args.nb_joints = 22
+    args.dim_pose = 263
+    args.dim_root = 4
+
+elif args.dataname == 'ue' : 
+    dataset_opt_path = 'checkpoints/ue/Comp_v6_KLD005/opt.txt'
+    args.nb_joints = 25
+    args.dim_pose = 305
+    args.dim_root = 13
 
 logger.info(f'Training on {args.dataname}, motions are with {args.nb_joints} joints')
 
@@ -94,7 +104,7 @@ optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(0.9, 0.99), weight_
 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_scheduler, gamma=args.gamma)
   
 
-Loss = losses.ReConsLoss(args.recons_loss, args.nb_joints)
+Loss = losses.ReConsLoss(args.recons_loss, args.nb_joints, args.dim_root)
 
 ##### ------ warm-up ------- #####
 avg_recons, avg_perplexity, avg_commit = 0., 0., 0.
@@ -131,7 +141,7 @@ for nb_iter in range(1, args.warm_up_iter):
 
 ##### ---- Training ---- #####
 avg_recons, avg_perplexity, avg_commit = 0., 0., 0.
-best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, 0, best_fid=1000, best_iter=0, best_div=100, best_top1=0, best_top2=0, best_top3=0, best_matching=100, eval_wrapper=eval_wrapper)
+best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, 0, best_fid=1000, best_iter=0, best_div=100, best_top1=0, best_top2=0, best_top3=0, best_matching=100, eval_wrapper=eval_wrapper, dataname=args.dataname)
 
 for nb_iter in range(1, args.total_iter + 1):
     
@@ -167,5 +177,5 @@ for nb_iter in range(1, args.total_iter + 1):
         avg_recons, avg_perplexity, avg_commit = 0., 0., 0.,
 
     if nb_iter % args.eval_iter==0 :
-        best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, eval_wrapper=eval_wrapper)
+        best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, eval_wrapper=eval_wrapper, dataname=args.dataname)
         

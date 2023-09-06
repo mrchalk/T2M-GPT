@@ -26,7 +26,12 @@ args = option_trans.get_args_parser()
 torch.manual_seed(args.seed)
 
 args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}')
-args.vq_dir= os.path.join("./dataset/KIT-ML" if args.dataname == 'kit' else "./dataset/HumanML3D", f'{args.vq_name}')
+if args.dataname == 't2m':
+    args.vq_dir= os.path.join("./dataset/HumanML3D", f'{args.vq_name}')
+elif args.dataname == 'kit':
+    args.vq_dir= os.path.join("./dataset/KIT-ML", f'{args.vq_name}')
+elif args.dataname == 'ue':
+    args.vq_dir= os.path.join("./dataset/HumanML3D_UE", f'{args.vq_name}')
 os.makedirs(args.out_dir, exist_ok = True)
 os.makedirs(args.vq_dir, exist_ok = True)
 
@@ -42,7 +47,7 @@ from utils.word_vectorizer import WordVectorizer
 w_vectorizer = WordVectorizer('./glove', 'our_vab')
 val_loader = dataset_TM_eval.DATALoader(args.dataname, False, 32, w_vectorizer)
 
-dataset_opt_path = 'checkpoints/kit/Comp_v6_KLD005/opt.txt' if args.dataname == 'kit' else 'checkpoints/t2m/Comp_v6_KLD005/opt.txt'
+dataset_opt_path = f'checkpoints/{args.dataname}/Comp_v6_KLD005/opt.txt'
 
 wrapper_opt = get_opt(dataset_opt_path, torch.device('cuda'))
 eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
@@ -115,7 +120,7 @@ train_loader_iter = dataset_TM_train.cycle(train_loader)
 
         
 ##### ---- Training ---- #####
-best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_transformer(args.out_dir, val_loader, net, trans_encoder, logger, writer, 0, best_fid=1000, best_iter=0, best_div=100, best_top1=0, best_top2=0, best_top3=0, best_matching=100, clip_model=clip_model, eval_wrapper=eval_wrapper)
+best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_transformer(args.out_dir, val_loader, net, trans_encoder, logger, writer, 0, best_fid=1000, best_iter=0, best_div=100, best_top1=0, best_top2=0, best_top3=0, best_matching=100, clip_model=clip_model, eval_wrapper=eval_wrapper, dataname=args.dataname)
 while nb_iter <= args.total_iter:
     
     batch = next(train_loader_iter)
