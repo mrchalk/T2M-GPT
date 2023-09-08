@@ -141,6 +141,7 @@ output_transformer
 glove
 checkpoints
 dataset/HumanML3D
+dataset/HumanML3D_UE
 dataset/KIT-ML
 output
 matrix_multi.py

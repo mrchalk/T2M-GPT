@@ -28,10 +28,16 @@ torch.manual_seed(args.seed)
 args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}')
 if args.dataname == 't2m':
     args.vq_dir= os.path.join("./dataset/HumanML3D", f'{args.vq_name}')
+    args.nb_joints = 22
+    args.dim_pose = 263
 elif args.dataname == 'kit':
     args.vq_dir= os.path.join("./dataset/KIT-ML", f'{args.vq_name}')
+    args.nb_joints = 21
+    args.dim_pose = 251
 elif args.dataname == 'ue':
     args.vq_dir= os.path.join("./dataset/HumanML3D_UE", f'{args.vq_name}')
+    args.nb_joints = 25
+    args.dim_pose = 305
 os.makedirs(args.out_dir, exist_ok = True)
 os.makedirs(args.vq_dir, exist_ok = True)
 

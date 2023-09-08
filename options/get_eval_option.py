@@ -47,7 +47,7 @@ def get_opt(opt_path, device):
                 else:
                     opt_dict[key] = str(value)
 
-    # print(opt)
+    print(opt)
     opt_dict['which_epoch'] = 'finest'
     opt.save_root = pjoin(opt.checkpoints_dir, opt.dataset_name, opt.name)
     opt.model_dir = pjoin(opt.save_root, 'model')

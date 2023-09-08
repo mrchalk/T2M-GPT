@@ -46,6 +46,16 @@ class Text2MotionDataset(data.Dataset):
             dim_pose = 251
             self.max_motion_length = 26 if unit_length == 8 else 51
             kinematic_chain = paramUtil.kit_kinematic_chain
+        elif dataset_name == 'ue':
+            self.data_root = './dataset/HumanML3D_UE'
+            self.motion_dir = pjoin(self.data_root, 'new_joint_vecs')
+            self.text_dir = pjoin(self.data_root, 'texts')
+            self.joints_num = 25
+            radius = 4
+            fps = 20
+            self.max_motion_length = 26 if unit_length == 8 else 51
+            dim_pose = 305
+            kinematic_chain = paramUtil.ue_kinematic_chain
 
         split_file = pjoin(self.data_root, 'train.txt')
 
